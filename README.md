@@ -25,7 +25,7 @@ Crypto Market Insights is a local-first research and decision-support applicatio
 - Conditional entry zones, invalidation/stop levels, targets, risk/reward assumptions and expiry
 - RSS ingestion with an optional news API adapter
 - News normalization, deduplication, classification and source-grounded summaries
-- Next.js dashboard for overview, charts, news, outlooks and historical performance
+- A separate frontend consumes the backend API for overview, charts, news, outlooks and historical performance
 - PostgreSQL persistence, scheduled jobs and Docker Compose deployment
 - Local LLM support through Ollama
 
@@ -35,11 +35,11 @@ Live trading, exchange trading credentials, order submission, wallet transfers, 
 
 ## Architecture
 
-The backend is Python-centric and the dashboard is built with React/Next.js:
+This repository contains the Python-centric backend. The dashboard is intentionally maintained
+in a separate frontend repository and consumes the versioned API:
 
 | Layer | Technology |
 |---|---|
-| Dashboard | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui |
 | API and jobs | Python, FastAPI, APScheduler |
 | Analytics | pandas, NumPy and tested deterministic indicator functions |
 | Database | PostgreSQL; TimescaleDB only if later justified |
@@ -61,7 +61,7 @@ flowchart LR
   LLM --> Brief
   Brief --> Database
   Database --> API[FastAPI]
-  API --> Dashboard[Next.js dashboard]
+  API --> Dashboard[Separate frontend repository]
   Database --> Evaluation[Walk-forward evaluation]
 ```
 
@@ -82,11 +82,15 @@ Core design decisions:
 - Python and Node.js toolchains
 - Ollama installed natively for local inference
 
-The repository is currently in the architecture and implementation bootstrap phase. The intended local services are:
+The repository is a monorepo in the architecture and implementation bootstrap phase. The Python
+API foundation and validation tooling are available under `apps/api`; the frontend will be added
+under `apps/web`.
+See [Contributing](CONTRIBUTING.md) for setup and validation commands.
+
+The intended local services are:
 
 | Service | Port |
 |---|---:|
-| Next.js dashboard | `3000` |
 | FastAPI | `8000` |
 | PostgreSQL | `5432` |
 | Ollama | `11434` |
@@ -118,22 +122,16 @@ Do not commit secrets. Verify provider availability, regional access, licensing,
 ## Planned repository structure
 
 ```text
-apps/web/                    # Next.js dashboard
-services/api/                # FastAPI application
-src/
-  ingestion/                 # Market-data and news pipelines
-  providers/                 # Market, exchange, news and LLM adapters
-  domain/                    # Universe, indicators, ranking, levels and evaluation
-  intelligence/              # Evidence context and brief generation
-  jobs/                      # Scheduled analysis jobs
-  repositories/              # Persistence
-  schemas/                   # Validated API and domain models
-migrations/
-tests/{unit,integration,backtesting,e2e}/
+apps/api/                   # Python/FastAPI application
+  src/                      # API package source
+  tests/                    # API tests
+  pyproject.toml            # API dependencies and tooling
+apps/web/                   # Next.js frontend
+  package.json              # Frontend dependencies and scripts
+migrations/                 # Shared database migrations
 infrastructure/
 docs/
 docker-compose.yml
-pyproject.toml
 .env.example
 README.md
 ```
@@ -144,7 +142,7 @@ README.md
 2. **Market foundation:** implement universe selection, adapters, candle storage, scheduling and health reporting.
 3. **Deterministic engine:** add indicators, regime features, ranking, risk gates, levels and `No Trade`.
 4. **News intelligence:** add RSS/API ingestion, deduplication, tagging and grounded summaries.
-5. **Dashboard:** deliver overview, charts, daily brief, trade setup, news and multi-horizon outlooks.
+5. **API integration:** expose overview, charts, daily brief, trade setup, news and multi-horizon outlook data for the separate frontend.
 6. **Evaluation:** freeze recommendations before outcomes, paper-track them and run walk-forward, out-of-sample comparisons against simple baselines.
 
 ## Reliability and evaluation principles
