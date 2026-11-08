@@ -35,7 +35,15 @@ python -m mypy apps/api/src
 python -m pytest apps/api/tests
 ```
 
-The frontend will document its own commands when it is added under `apps/web`.
+Install and validate the frontend from its directory:
+
+```powershell
+cd apps/web
+npm install
+npm run typecheck
+npm run test
+npm run build
+```
 
 ## Code conventions
 
