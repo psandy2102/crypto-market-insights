@@ -83,8 +83,8 @@ Core design decisions:
 - Ollama installed natively for local inference
 
 The repository is a monorepo in the architecture and implementation bootstrap phase. The Python
-API foundation and validation tooling are available under `apps/api`; the frontend will be added
-under `apps/web`.
+API foundation is available under `apps/api`, and the Next.js dashboard shell is available under
+`apps/web`.
 See [Contributing](CONTRIBUTING.md) for setup and validation commands.
 
 The intended local services are:
@@ -128,6 +128,8 @@ apps/api/                   # Python/FastAPI application
   pyproject.toml            # API dependencies and tooling
 apps/web/                   # Next.js frontend
   package.json              # Frontend dependencies and scripts
+  app/                      # Dashboard routes and shared styles
+  lib/                      # Typed API boundary and UI helpers
 migrations/                 # Shared database migrations
 infrastructure/
 docs/
