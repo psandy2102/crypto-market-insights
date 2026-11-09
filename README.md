@@ -97,13 +97,48 @@ The intended local services are:
 
 Bind services to localhost for personal use. Never expose PostgreSQL or Ollama publicly.
 
+### Start the local stack
+
+From the repository root, copy the example configuration and start PostgreSQL, the API, and the
+dashboard:
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build -d
+```
+
+Change `POSTGRES_PASSWORD` in `.env` before relying on the local setup. The sample value is only
+a placeholder. Compose requires the database name, user, and password from this file. Service
+ports are bound to localhost: the dashboard is at `http://localhost:3000`, the API health endpoint
+is at `http://localhost:8000/health`, and PostgreSQL is at `localhost:5432` (or `POSTGRES_PORT`).
+Compose waits for PostgreSQL and the API health checks before starting dependent services.
+
+Useful lifecycle commands (from the repository root):
+
+```powershell
+docker compose ps
+docker compose logs -f
+docker compose down
+```
+
+`docker compose down` stops and removes the containers but preserves the PostgreSQL data volume.
+To reset the local database and permanently delete its stored data:
+
+```powershell
+docker compose down -v
+```
+
 ### Configuration
 
-Copy `.env.example` to `.env` when the application scaffolding is available. The planned configuration includes:
+Copy `.env.example` to `.env` to configure the local stack. The configuration includes:
 
 ```env
 APP_ENV=development
 APP_TIMEZONE=America/Toronto
+POSTGRES_DB=crypto_insights
+POSTGRES_USER=crypto_insights
+POSTGRES_PASSWORD=change-this-local-password
+POSTGRES_PORT=5432
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/crypto_insights
 MARKET_METADATA_PROVIDER=coingecko
 MARKET_DATA_VENUE=kraken
