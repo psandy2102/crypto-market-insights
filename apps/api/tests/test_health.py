@@ -2,10 +2,18 @@ from pytest import MonkeyPatch
 
 from crypto_market_insights.config import Settings
 from crypto_market_insights.health import health_check
+from crypto_market_insights.main import get_health
 
 
 def test_health_check_reports_ready_service() -> None:
     assert health_check() == {
+        "service": "crypto-market-insights",
+        "status": "ok",
+    }
+
+
+def test_api_health_endpoint_reports_ready_service() -> None:
+    assert get_health() == {
         "service": "crypto-market-insights",
         "status": "ok",
     }
