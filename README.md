@@ -112,6 +112,7 @@ a placeholder. Compose requires the database name, user, and password from this 
 ports are bound to localhost: the dashboard is at `http://localhost:3000`, the API health endpoint
 is at `http://localhost:8000/health`, and PostgreSQL is at `localhost:5432` (or `POSTGRES_PORT`).
 Compose waits for PostgreSQL and the API health checks before starting dependent services.
+The API container applies pending database migrations before it starts serving requests.
 
 Useful lifecycle commands (from the repository root):
 
@@ -128,6 +129,23 @@ To reset the local database and permanently delete its stored data:
 docker compose down -v
 ```
 
+### Database schema
+
+Alembic migrations live in `apps/api/migrations`. To apply them manually from the repository root,
+set `DATABASE_URL` to the target PostgreSQL database and run:
+
+```powershell
+alembic -c alembic.ini upgrade head
+```
+
+The initial schema records canonical assets, point-in-time universe membership, venue pairs,
+OHLCV candles, market and news provenance, feature snapshots, rankings, analysis runs, strategy
+and model versions, briefs, setups, scenarios, input references, and evaluation results. All
+stored instants use PostgreSQL `TIMESTAMPTZ`; price and volume fields use fixed-precision
+`NUMERIC`. Candle uniqueness on `(venue_id, market_pair_id, interval, open_time)` supports
+idempotent inserts with PostgreSQL `ON CONFLICT`. Published briefs and their input references
+reject updates, deletes, and truncation.
+
 ### Configuration
 
 Copy `.env.example` to `.env` to configure the local stack. The configuration includes:
@@ -139,7 +157,7 @@ POSTGRES_DB=crypto_insights
 POSTGRES_USER=crypto_insights
 POSTGRES_PASSWORD=change-this-local-password
 POSTGRES_PORT=5432
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/crypto_insights
+DATABASE_URL=postgresql+psycopg://crypto_insights:change-this-local-password@localhost:5432/crypto_insights
 MARKET_METADATA_PROVIDER=coingecko
 MARKET_DATA_VENUE=kraken
 DEFAULT_QUOTE_CURRENCY=USD
