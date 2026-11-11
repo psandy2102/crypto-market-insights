@@ -97,7 +97,7 @@ Use APScheduler with idempotent jobs. Add Redis/Celery only when concurrent jobs
 Provider access, free-tier limits, geographic availability and licensing can change. Recheck before implementation and before public/commercial release.
 
 ### Asset metadata
-- **CoinGecko Demo API:** market-cap ranking, asset metadata and market history. Current pricing page describes a free Demo tier with 10,000 monthly credits and 100 calls/minute; endpoint access/freshness varies by plan. Attribution may be required. [Pricing](https://www.coingecko.com/en/api/pricing) · [Data-use guidance](https://support.coingecko.com/articles/4315804955-can-i-use-coingecko-data-and-screenshots-for-my-website-book-etc)
+- **CoinGecko API:** market-cap ranking and asset metadata via `/coins/markets`. Rate limits, endpoint access, freshness and usage terms depend on the current API plan and may change. Review the [API documentation](https://docs.coingecko.com/reference/coins-markets), [pricing](https://www.coingecko.com/en/api/pricing) and [data-use/attribution guidance](https://support.coingecko.com/articles/4315804955-can-i-use-coingecko-data-and-screenshots-for-my-website-book-etc) before deployment or publication.
 - **CoinPaprika:** tickers, coins, exchanges and OHLCV. Current free plan is personal-use only, with 20,000 calls/month per IP and limited historical OHLCV. Do not assume personal-use terms allow public/commercial use. [Pricing](https://coinpaprika.com/api/pricing/) · [Developer docs](https://coinpaprika.com/developers)
 
 ### Venue candles

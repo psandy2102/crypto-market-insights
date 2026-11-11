@@ -154,6 +154,21 @@ UNIVERSE_SIZE=10
 
 Do not commit secrets. Verify provider availability, regional access, licensing, quotas and attribution requirements before relying on any provider or publishing data.
 
+The initial metadata adapter uses CoinGecko's `/coins/markets` endpoint, which returns assets
+ordered by market capitalization. Set `COINGECKO_API_KEY` in `.env` for a Demo API key; it is sent
+in the request header and is not included in logs. The adapter retries rate-limited and transient
+server/network failures a bounded number of times, then logs and raises a provider error with the
+provider, status, attempt count, and failure time. Successful records preserve CoinGecko's
+`last_updated` timestamp separately from the local retrieval time.
+
+CoinGecko's public API rate limits, endpoint availability, plan entitlements, and data-use terms
+can change. Check the [API documentation](https://docs.coingecko.com/reference/coins-markets),
+[current pricing](https://www.coingecko.com/en/api/pricing), and
+[data-use and attribution guidance](https://support.coingecko.com/articles/4315804955-can-i-use-coingecko-data-and-screenshots-for-my-website-book-etc)
+before deployment. When publishing CoinGecko data, name CoinGecko as the data source and follow
+its branding guidance and any applicable plan terms. API key availability does not grant additional
+data-use rights.
+
 ## Planned repository structure
 
 ```text

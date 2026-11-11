@@ -23,6 +23,9 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:?Set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      MARKET_METADATA_PROVIDER: ${MARKET_METADATA_PROVIDER:-coingecko}
+      DEFAULT_QUOTE_CURRENCY: ${DEFAULT_QUOTE_CURRENCY:-USD}
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
