@@ -190,6 +190,29 @@ See the [Kraken OHLC](https://docs.kraken.com/api-reference/market-data/get-ohlc
 [Ticker](https://docs.kraken.com/api-reference/market-data/get-ticker-information) API references.
 Confirm product availability, pair support, and current terms for the intended region before use.
 
+### Candle ingestion and data health
+
+The API migrates its PostgreSQL candle-ingestion tables on container startup. Request candles for
+one pair and interval through the selected venue with:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/v1/candles/ingest `
+  -ContentType "application/json" `
+  -Body '{"base_symbol":"BTC","quote_symbol":"USD","interval":"1h"}'
+```
+
+Ingestion validates candle identity, OHLCV invariants, duplicate keys, gaps, stale completed
+candles, and configurable-by-code price outlier thresholds before persistence. Exact duplicate
+rows in a response are collapsed with a warning; conflicting duplicates and invalid/stale batches
+are rejected with diagnostics. Persistence uses the unique `(venue, venue_pair, interval,
+open_time)` key with PostgreSQL `ON CONFLICT DO UPDATE`, so repeating ingestion updates existing
+candles instead of creating duplicates. Run records and provider health retain failures and
+timestamps for diagnosis.
+
+Inspect provider status, latest completed candle freshness, and recent failed runs at
+`http://localhost:8000/api/v1/data-health`. This endpoint reports database-backed ingestion
+health; `/health` remains the API process liveness endpoint.
+
 ## Planned repository structure
 
 ```text

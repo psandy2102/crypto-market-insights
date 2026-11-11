@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_timezone: str = "America/Toronto"
     database_url: str = Field(
-        default="postgresql://localhost:5432/crypto_insights",
+        default="postgresql+psycopg://localhost:5432/crypto_insights",
         repr=False,
     )
     market_metadata_provider: str = Field(default="coingecko", min_length=1)
