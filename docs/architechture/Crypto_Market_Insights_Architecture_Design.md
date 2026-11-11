@@ -101,7 +101,9 @@ Provider access, free-tier limits, geographic availability and licensing can cha
 - **CoinPaprika:** tickers, coins, exchanges and OHLCV. Current free plan is personal-use only, with 20,000 calls/month per IP and limited historical OHLCV. Do not assume personal-use terms allow public/commercial use. [Pricing](https://coinpaprika.com/api/pricing/) · [Developer docs](https://coinpaprika.com/developers)
 
 ### Venue candles
-- Use an exchange public market-data API for OHLCV, ticker and optionally order-book snapshots.
+- The initial adapter uses Kraken's public spot `AssetPairs`, `OHLC` and `Ticker` endpoints. Resolve canonical base/quote symbols against the live pair listing and fail on ambiguous, unavailable or inactive mappings.
+- Normalize OHLCV values as decimals and timestamps as UTC. Kraken's OHLC response always includes an uncommitted current candle; label it incomplete and exclude it from completed-candle calculations.
+- Keep venue candles and tickers in separate provider contracts from aggregator metadata. Never substitute CoinGecko/CoinPaprika prices for venue-specific levels.
 - Candidate adapters include Kraken public market data and Binance market-data-only endpoints, subject to regional availability, pair coverage and current terms.
 - Binance documents unauthenticated public endpoints including klines and ticker endpoints: [Market Data Only](https://github.com/binance/binance-spot-api-docs/blob/master/faqs/market_data_only.md).
 - Historical public Binance candles are also documented in [Binance Public Data](https://github.com/binance/binance-public-data).

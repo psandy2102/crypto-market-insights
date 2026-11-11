@@ -169,6 +169,27 @@ before deployment. When publishing CoinGecko data, name CoinGecko as the data so
 its branding guidance and any applicable plan terms. API key availability does not grant additional
 data-use rights.
 
+### Venue OHLCV and ticker data
+
+The initial venue adapter uses Kraken's public spot `AssetPairs`, `OHLC`, and `Ticker` endpoints.
+Configure `MARKET_DATA_VENUE=kraken` and `DEFAULT_QUOTE_CURRENCY` in `.env`; no exchange
+credentials are used. The adapter resolves the requested base/quote symbols against Kraken's
+current pair list and fails on unavailable, inactive, or ambiguous mappings rather than guessing.
+Supported intervals are `1m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1d`, `1w`, and `15d`.
+
+OHLC prices and volumes remain `Decimal` values, candle timestamps are UTC, and each record carries
+the venue and resolved pair. The candle's `close_time` is the exclusive end of its interval;
+Kraken always includes its current uncommitted candle, which is marked `is_complete=false`.
+Kraken limits OHLC history to its most recent 720 entries. Ticker snapshots and candles both come
+from Kraken; CoinGecko metadata is kept in a separate contract and is never substituted for
+venue prices. Kraken's ticker response does not provide a last-trade timestamp, so the snapshot's
+source timestamp is the local UTC retrieval time.
+
+See the [Kraken OHLC](https://docs.kraken.com/api-reference/market-data/get-ohlc-data),
+[AssetPairs](https://docs.kraken.com/api-reference/market-data/get-tradable-asset-pairs), and
+[Ticker](https://docs.kraken.com/api-reference/market-data/get-ticker-information) API references.
+Confirm product availability, pair support, and current terms for the intended region before use.
+
 ## Planned repository structure
 
 ```text
