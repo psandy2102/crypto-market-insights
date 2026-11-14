@@ -213,6 +213,32 @@ Inspect provider status, latest completed candle freshness, and recent failed ru
 `http://localhost:8000/api/v1/data-health`. This endpoint reports database-backed ingestion
 health; `/health` remains the API process liveness endpoint.
 
+### Deterministic technical indicators
+
+The `crypto_market_insights.indicators.calculate_indicators` library computes EMA 20/50/200,
+Wilder RSI 14, MACD 12/26/9, Wilder ATR 14, relative volume (latest volume divided by the prior
+20-candle average), 20-return realized volatility, confirmed swing levels, classic pivot levels,
+and optional session VWAP. Values are `Decimal`s. An unavailable value includes a status and its
+required and available candle counts, so warm-up limits are explicit rather than filled with
+estimates. EMA uses an initial-period SMA seed; RSI and ATR use Wilder smoothing. RSI is 50 for a
+flat series, 100 when average loss is zero, and 0 when average gain is zero. Relative volume
+requires 21 candles and excludes the latest candle from its 20-candle baseline; a zero-volume
+baseline is reported separately.
+
+Each calculation requires one venue, pair, and supported timeframe. The exclusive `close_time`
+must be at or before the evaluation time, and `is_complete` must also be true; current or
+future-closing candles are excluded and counted in the result. The snapshot's `as_of` is the
+latest included candle's close time. Period-based indicators operate on the available completed
+candle sequence; realized volatility is the non-annualized square root of the sum of squared
+close-to-close log returns over the latest 20 returns. Swing levels use the latest confirmed
+two-bars-on-each-side high/low within 20 candles, while classic pivots use the latest completed
+candle's OHLC.
+
+VWAP is only produced for intraday timeframes when the caller explicitly marks volume as reliable
+and provides every candle from the UTC session start through the latest completed candle without
+gaps. Otherwise it reports why it is unavailable. The library does not expose an indicator API
+route yet; it is intended for deterministic backend use and independent unit testing.
+
 ## Planned repository structure
 
 ```text
