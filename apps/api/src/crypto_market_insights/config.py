@@ -1,5 +1,6 @@
 """Environment-backed application settings."""
 
+from decimal import Decimal
 from functools import lru_cache
 
 from pydantic import Field, SecretStr
@@ -30,6 +31,13 @@ class Settings(BaseSettings):
     ollama_model: str = ""
     daily_analysis_time: str = "08:00"
     universe_size: int = 10
+    universe_min_market_cap: Decimal = Decimal("100000000")
+    universe_min_quote_volume: Decimal = Decimal("10000000")
+    universe_min_history_candles: int = 200
+    universe_history_timeframe: str = "1d"
+    universe_max_metadata_age_hours: int = 24
+    universe_max_history_age_hours: int = 26
+    universe_min_data_quality: Decimal = Decimal(90)
 
 
 @lru_cache

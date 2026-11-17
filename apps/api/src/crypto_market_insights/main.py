@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -13,12 +14,16 @@ from crypto_market_insights.candle_ingestion import (
 )
 from crypto_market_insights.candle_storage import CandleRepository
 from crypto_market_insights.config import get_settings
-from crypto_market_insights.dependencies import get_candle_repository
+from crypto_market_insights.dependencies import (
+    get_candle_repository,
+    get_universe_repository,
+)
 from crypto_market_insights.health import health_check
 from crypto_market_insights.kraken import (
     VenueMarketDataError,
     create_venue_market_data_provider,
 )
+from crypto_market_insights.universe_storage import UniverseRepository
 
 app = FastAPI(title="Crypto Market Insights API")
 
@@ -88,6 +93,62 @@ class DataHealthResponse(BaseModel):
     providers: list[ProviderHealthResponse]
     freshness: list[CandleFreshnessResponse]
     recent_failed_runs: list[FailedIngestionResponse]
+
+
+class UniverseRunResponse(BaseModel):
+    id: UUID
+    evaluated_at: datetime
+    venue: str
+    quote_currency: str
+    metadata_provider: str
+    universe_version: str
+    ranking_strategy_version: str
+    requested_size: int
+    candidate_count: int
+    selected_count: int
+    no_trade: bool
+    ranking_weights: dict[str, float]
+
+
+class UniverseCandidateResponse(BaseModel):
+    provider_asset_id: str
+    canonical_asset_id: str
+    symbol: str
+    name: str
+    venue_pair: str | None
+    asset_types: list[str]
+    history_timeframe: str
+    market_cap: Decimal | None
+    quote_volume: Decimal | None
+    metadata_source_timestamp: datetime
+    metadata_retrieved_at: datetime
+    history_candle_count: int
+    history_as_of: datetime | None
+    data_quality_score: Decimal | None
+    eligible: bool
+    selected: bool
+    selection_rank: int | None
+    exclusion_reasons: list[str]
+    effective_from: datetime | None
+    effective_to: datetime | None
+
+
+class UniverseRankingResponse(BaseModel):
+    provider_asset_id: str
+    canonical_asset_id: str
+    symbol: str
+    venue_pair: str
+    strategy_version: str
+    component_scores: dict[str, float] | None
+    total_score: float | None
+    rank: int | None
+    gate_failures: list[str]
+
+
+class LatestUniverseResponse(BaseModel):
+    run: UniverseRunResponse
+    candidates: list[UniverseCandidateResponse]
+    rankings: list[UniverseRankingResponse]
 
 
 @app.get("/health")
@@ -166,6 +227,28 @@ def get_data_health(
             for row in result["recent_failed_runs"]
         ],
     }
+
+
+@app.get("/api/v1/universe/latest", response_model=LatestUniverseResponse)
+def get_latest_universe(
+    repository: Annotated[UniverseRepository, Depends(get_universe_repository)],
+    venue: str | None = None,
+) -> dict[str, Any]:
+    """Expose the latest point-in-time membership and component-level rankings."""
+    result = repository.get_latest(venue=venue)
+    if result is None:
+        raise HTTPException(status_code=404, detail="No universe snapshot is available.")
+    result["run"]["ranking_weights"] = {
+        key: float(value) for key, value in result["run"]["ranking_weights"].items()
+    }
+    for ranking in result["rankings"]:
+        if ranking["component_scores"] is not None:
+            ranking["component_scores"] = {
+                key: float(value) for key, value in ranking["component_scores"].items()
+            }
+        if ranking["total_score"] is not None:
+            ranking["total_score"] = float(ranking["total_score"])
+    return result
 
 
 def _to_utc(value: datetime) -> datetime:
