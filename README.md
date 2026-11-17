@@ -150,6 +150,13 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=your-verified-local-model-tag
 DAILY_ANALYSIS_TIME=08:00
 UNIVERSE_SIZE=10
+UNIVERSE_MIN_MARKET_CAP=100000000
+UNIVERSE_MIN_QUOTE_VOLUME=10000000
+UNIVERSE_MIN_HISTORY_CANDLES=200
+UNIVERSE_HISTORY_TIMEFRAME=1d
+UNIVERSE_MAX_METADATA_AGE_HOURS=24
+UNIVERSE_MAX_HISTORY_AGE_HOURS=26
+UNIVERSE_MIN_DATA_QUALITY=90
 ```
 
 Do not commit secrets. Verify provider availability, regional access, licensing, quotas and attribution requirements before relying on any provider or publishing data.
@@ -238,6 +245,33 @@ VWAP is only produced for intraday timeframes when the caller explicitly marks v
 and provides every candle from the UTC session start through the latest completed candle without
 gaps. Otherwise it reports why it is unavailable. The library does not expose an indicator API
 route yet; it is intended for deterministic backend use and independent unit testing.
+
+### Point-in-time universe and rankings
+
+The universe selector (`crypto_market_insights.universe.select_universe`) evaluates one
+provider/venue observation per asset at an explicit UTC timestamp. It applies the configured
+market-cap, quote-volume, history-length, data-quality, metadata-age and history-age limits; it
+requires an explicitly resolved venue pair and the configured history timeframe (daily candles
+by default); and it excludes known stablecoins, wrapped assets, leveraged symbols and duplicate
+economic exposures. Exclusion lists and canonical-asset overrides
+are policy inputs, not inferred symbol substitutions; metadata enrichment can also explicitly tag
+stablecoin, wrapped, bridged, leveraged and synthetic asset types. Eligible assets are ordered by
+market cap, provider rank and provider asset ID; unsupported assets are never replaced with a
+different pair.
+Threshold defaults are initial configurable screening hypotheses, not investment advice.
+
+The initial rank formula uses normalized 0–100 inputs:
+
+`0.25 trend + 0.20 momentum/relative strength + 0.15 volume + 0.20 setup + 0.10 liquidity + 0.10 news`
+
+`UniverseService.evaluate` selects, ranks and persists one supplied point-in-time observation set.
+`RankingStrategy` returns the six component scores, weighted total, rank, strategy version, and
+hard-gate failures. Gated assets retain their component evidence but are not ranked; missing
+evidence or all-gated candidates produce an explicit `no_trade` result. Each evaluated candidate
+and selected membership is stored with effective timestamps, provenance, exclusion reasons,
+component scores, and strategy versions. The latest stored snapshot is readable at
+`/api/v1/universe/latest` (optionally filtered by `?venue=kraken`). Membership changes are
+effective-dated; refreshes must be persisted in increasing timestamp order.
 
 ## Planned repository structure
 
