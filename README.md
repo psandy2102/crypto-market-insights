@@ -273,6 +273,22 @@ component scores, and strategy versions. The latest stored snapshot is readable 
 `/api/v1/universe/latest` (optionally filtered by `?venue=kraken`). Membership changes are
 effective-dated; refreshes must be persisted in increasing timestamp order.
 
+### Risk gates and No Trade
+
+The `crypto_market_insights.risk_gates.RiskGateEvaluator` returns a first-class `TRADE` or
+`NO_TRADE` outcome with machine-readable and human-readable blocking reasons. It rejects stale,
+missing, or future-completed candles; unresolved/unsupported venue pair mappings; insufficient
+quote volume or liquidity; abnormal ATR-to-close volatility; missing or post-cost reward/risk
+below the configured minimum; unresolved severe events; misaligned timeframes; undefined
+invalidation; and invalid setup expiry. Each gate is independent and positive sentiment never
+vetoes or overrides a severe-event gate.
+
+The API provides `POST /api/v1/risk-gates/evaluate` for a structured risk decision and
+`GET /api/v1/risk-gates/latest` for the latest persisted decision. Persisted tables retain the
+strategy version, outcome, expiry, post-cost reward/risk, and every reason code/message. Trade
+decisions and No Trade are both dashboard contract outcomes; missing or failed API data must
+remain an unavailable result rather than a synthesized trade.
+
 ## Planned repository structure
 
 ```text
