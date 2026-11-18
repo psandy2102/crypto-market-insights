@@ -1,6 +1,6 @@
 """FastAPI application entry point."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
@@ -16,6 +16,7 @@ from crypto_market_insights.candle_storage import CandleRepository
 from crypto_market_insights.config import get_settings
 from crypto_market_insights.dependencies import (
     get_candle_repository,
+    get_risk_decision_repository,
     get_universe_repository,
 )
 from crypto_market_insights.health import health_check
@@ -23,6 +24,12 @@ from crypto_market_insights.kraken import (
     VenueMarketDataError,
     create_venue_market_data_provider,
 )
+from crypto_market_insights.risk_gates import (
+    RiskGateEvaluator,
+    RiskGateInput,
+    RiskGatePolicy,
+)
+from crypto_market_insights.risk_storage import RiskDecisionRepository
 from crypto_market_insights.universe_storage import UniverseRepository
 
 app = FastAPI(title="Crypto Market Insights API")
@@ -151,6 +158,22 @@ class LatestUniverseResponse(BaseModel):
     rankings: list[UniverseRankingResponse]
 
 
+class RiskGateReasonResponse(BaseModel):
+    code: str
+    message: str
+
+
+class RiskGateDecisionResponse(BaseModel):
+    candidate_asset_id: str
+    strategy_version: str
+    outcome: str
+    approved: bool
+    reasons: list[RiskGateReasonResponse]
+    evaluated_at: datetime
+    expires_at: datetime
+    post_cost_reward_risk: Decimal | None
+
+
 @app.get("/health")
 def get_health() -> dict[str, str]:
     """Return API readiness status."""
@@ -248,6 +271,44 @@ def get_latest_universe(
             }
         if ranking["total_score"] is not None:
             ranking["total_score"] = float(ranking["total_score"])
+    return result
+
+
+@app.post("/api/v1/risk-gates/evaluate", response_model=RiskGateDecisionResponse)
+def evaluate_risk_gate(
+    inputs: RiskGateInput,
+    repository: Annotated[
+        RiskDecisionRepository,
+        Depends(get_risk_decision_repository),
+    ],
+) -> dict[str, Any]:
+    """Persist and return an explicit TRADE or NO_TRADE risk decision."""
+    settings = get_settings()
+    policy = RiskGatePolicy(
+        max_candle_age=timedelta(hours=settings.risk_max_candle_age_hours),
+        min_quote_volume=settings.risk_min_quote_volume,
+        min_liquidity_score=settings.risk_min_liquidity_score,
+        max_atr_to_close=settings.risk_max_atr_to_close,
+        min_post_cost_reward_risk=settings.risk_min_post_cost_reward_risk,
+        setup_expiry=timedelta(hours=settings.risk_setup_expiry_hours),
+    )
+    result = RiskGateEvaluator(policy).evaluate(inputs)
+    repository.persist(result)
+    return result.model_dump(mode="python")
+
+
+@app.get("/api/v1/risk-gates/latest", response_model=dict[str, Any])
+def get_latest_risk_decision(
+    repository: Annotated[
+        RiskDecisionRepository,
+        Depends(get_risk_decision_repository),
+    ],
+    candidate_asset_id: str | None = None,
+) -> dict[str, Any]:
+    """Return the latest persisted TRADE or NO_TRADE risk decision."""
+    result = repository.get_latest(candidate_asset_id=candidate_asset_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="No risk decision is available.")
     return result
 
 

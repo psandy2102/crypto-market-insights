@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     universe_max_metadata_age_hours: int = 24
     universe_max_history_age_hours: int = 26
     universe_min_data_quality: Decimal = Decimal(90)
+    risk_max_candle_age_hours: int = 26
+    risk_min_quote_volume: Decimal = Decimal("10000000")
+    risk_min_liquidity_score: Decimal = Decimal(60)
+    risk_max_atr_to_close: Decimal = Decimal("0.20")
+    risk_min_post_cost_reward_risk: Decimal = Decimal("1.50")
+    risk_setup_expiry_hours: int = 24
 
 
 @lru_cache
