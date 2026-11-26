@@ -24,9 +24,40 @@ export type LatestRiskDecisionResponse = RiskGateDecision & {
   risk_reasons?: RiskGateReason[];
 };
 
+export type NewsArticle = {
+  id: string;
+  canonical_url: string;
+  title: string;
+  publisher: string;
+  language: string;
+  published_at: string | null;
+  retrieved_at: string;
+  excerpt: string | null;
+  title_fingerprint: string;
+  source_count: number;
+};
+
+export type NewsFeedHealth = {
+  feed_id: string;
+  url: string;
+  status: string;
+  last_attempt_at: string;
+  last_success_at: string | null;
+  last_error: string | null;
+  stale: boolean;
+  stale_after_seconds: number;
+};
+
+export type NewsHealthResponse = {
+  feeds: NewsFeedHealth[];
+  recent_runs: unknown[];
+};
+
 export type ApiClient = {
   getHealth: () => Promise<ApiHealth>;
   getLatestRiskDecision: (candidateAssetId?: string) => Promise<LatestRiskDecisionResponse>;
+  getNewsArticles: (limit?: number) => Promise<NewsArticle[]>;
+  getNewsHealth: () => Promise<NewsHealthResponse>;
 };
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -64,4 +95,14 @@ async function getLatestRiskDecision(
 export const apiClient: ApiClient = {
   getHealth,
   getLatestRiskDecision,
+  getNewsArticles: async (limit = 50) => {
+    const response = await fetch(`${apiBaseUrl}/api/v1/news/articles?limit=${limit}`);
+    if (!response.ok) throw new Error(`News articles request failed with status ${response.status}`);
+    return response.json() as Promise<NewsArticle[]>;
+  },
+  getNewsHealth: async () => {
+    const response = await fetch(`${apiBaseUrl}/api/v1/news/health`);
+    if (!response.ok) throw new Error(`News health request failed with status ${response.status}`);
+    return response.json() as Promise<NewsHealthResponse>;
+  },
 };
