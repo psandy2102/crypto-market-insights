@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     llm_provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = ""
+    ollama_temperature: float = Field(default=0.0, ge=0, le=2)
+    ollama_top_p: float = Field(default=0.9, gt=0, le=1)
+    ollama_seed: int = 42
+    ollama_num_predict: int = Field(default=512, ge=1, le=4096)
     daily_analysis_time: str = "08:00"
     universe_size: int = 10
     universe_min_market_cap: Decimal = Decimal("100000000")

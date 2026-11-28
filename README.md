@@ -287,6 +287,28 @@ of `{ "feed_id": "...", "url": "..." }` objects. Inspect canonical articles at
 `GET /api/v1/news/articles` and provider/feed health at `GET /api/v1/news/health`. Failed runs,
 HTTP/network/XML validation failures, latest attempts, and stale feed state are visible.
 
+### Source-grounded LLM summaries
+
+Install and start Ollama locally, pull a model suited to the available hardware, and set
+`OLLAMA_MODEL` to its exact local tag. The API calls Ollama's chat endpoint using a versioned
+JSON-schema prompt and bounded generation settings. In Docker Compose, `OLLAMA_BASE_URL` defaults
+to `http://host.docker.internal:11434`; override it when Ollama runs elsewhere.
+
+Generate a summary from persisted article IDs and caller-supplied deterministic features:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/v1/summaries `
+  -ContentType "application/json" `
+  -Body '{"article_ids":["<persisted-article-uuid>"],"deterministic_features":{"rsi_14":52.4,"trend":"neutral"}}'
+```
+
+Each factual claim must cite supplied article IDs. The API rejects invalid output schemas,
+unknown article references, generated URLs, and numbers absent from the cited article text or
+deterministic features. Article fields are passed as untrusted evidence, not instructions.
+Validated results retain model identity, prompt version, generation parameters, selected evidence,
+and deterministic features in PostgreSQL. This is an explanation aid, not an authoritative
+calculation or a trading recommendation.
+
 ### Risk gates and No Trade
 
 The `crypto_market_insights.risk_gates.RiskGateEvaluator` returns a first-class `TRADE` or
