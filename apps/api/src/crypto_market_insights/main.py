@@ -16,6 +16,7 @@ from crypto_market_insights.candle_storage import CandleRepository
 from crypto_market_insights.config import get_settings
 from crypto_market_insights.dependencies import (
     get_candle_repository,
+    get_llm_summary_service,
     get_news_repository,
     get_risk_decision_repository,
     get_universe_repository,
@@ -24,6 +25,14 @@ from crypto_market_insights.health import health_check
 from crypto_market_insights.kraken import (
     VenueMarketDataError,
     create_venue_market_data_provider,
+)
+from crypto_market_insights.llm_summaries import (
+    MAX_ARTICLES,
+    GroundedSummaryService,
+    SummaryClaim,
+    SummaryInputError,
+    SummaryOutputError,
+    SummaryProviderError,
 )
 from crypto_market_insights.news import (
     NewsIngestionService,
@@ -231,6 +240,25 @@ class NewsPollRequest(BaseModel):
     feeds: list[dict[str, str]] = Field(default_factory=list)
 
 
+class GroundedSummaryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    article_ids: list[UUID] = Field(min_length=1, max_length=MAX_ARTICLES)
+    deterministic_features: dict[str, Any] = Field(default_factory=dict)
+
+
+class GroundedSummaryResponse(BaseModel):
+    id: UUID
+    model_identity: str
+    prompt_version: str
+    generation_parameters: dict[str, int | float]
+    article_ids: list[UUID]
+    summary: str
+    claims: list[SummaryClaim]
+    uncertainty: str
+    unknowns: list[str]
+
+
 @app.get("/health")
 def get_health() -> dict[str, str]:
     """Return API readiness status."""
@@ -428,6 +456,31 @@ def get_news_health(
     return repository.get_health(
         stale_after_seconds=settings.rss_stale_after_minutes * 60,
     )
+
+
+@app.post("/api/v1/summaries", response_model=GroundedSummaryResponse)
+def generate_grounded_summary(
+    request: GroundedSummaryRequest,
+    service: Annotated[GroundedSummaryService, Depends(get_llm_summary_service)],
+) -> dict[str, Any]:
+    """Generate and persist a summary grounded in selected article evidence."""
+    settings = get_settings()
+    if settings.llm_provider != "ollama":
+        raise HTTPException(
+            status_code=503,
+            detail=f"LLM provider {settings.llm_provider!r} is not available.",
+        )
+    try:
+        return service.generate(
+            article_ids=request.article_ids,
+            deterministic_features=request.deterministic_features,
+        )
+    except SummaryOutputError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    except SummaryInputError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except SummaryProviderError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
 
 
 def _to_utc(value: datetime) -> datetime:

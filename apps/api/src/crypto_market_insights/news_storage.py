@@ -1,8 +1,10 @@
 """SQLAlchemy persistence for RSS provenance, canonical articles, and feed health."""
 
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import (
     JSON,
@@ -296,6 +298,16 @@ class NewsRepository:
                 .limit(limit)
             ).mappings()
             return [_normalize_row(dict(row)) for row in rows]
+
+    def get_articles_by_ids(self, article_ids: Sequence[UUID]) -> list[dict[str, Any]]:
+        if not article_ids:
+            return []
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                select(news_articles).where(news_articles.c.id.in_(article_ids))
+            ).mappings()
+            articles = {row["id"]: _normalize_row(dict(row)) for row in rows}
+        return [articles[article_id] for article_id in article_ids if article_id in articles]
 
     def get_health(self, stale_after_seconds: int = 86400) -> dict[str, Any]:
         now = datetime.now(UTC)
