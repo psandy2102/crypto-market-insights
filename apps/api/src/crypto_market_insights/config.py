@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     risk_max_atr_to_close: Decimal = Decimal("0.20")
     risk_min_post_cost_reward_risk: Decimal = Decimal("1.50")
     risk_setup_expiry_hours: int = 24
+    rss_feeds: str = ""
+    rss_poll_interval_minutes: int = 30
+    rss_stale_after_minutes: int = 1440
+    news_excerpt_chars: int = 500
 
 
 @lru_cache

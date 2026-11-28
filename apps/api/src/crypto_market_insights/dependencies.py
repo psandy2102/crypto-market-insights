@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from crypto_market_insights.candle_storage import CandleRepository, create_database_engine
 from crypto_market_insights.config import get_settings
+from crypto_market_insights.news_storage import NewsRepository
 from crypto_market_insights.risk_storage import RiskDecisionRepository
 from crypto_market_insights.universe_storage import UniverseRepository
 
@@ -27,3 +28,10 @@ def get_risk_decision_repository() -> RiskDecisionRepository:
     """Return the process-wide risk-gate decision repository."""
     settings = get_settings()
     return RiskDecisionRepository(create_database_engine(settings.database_url))
+
+
+@lru_cache
+def get_news_repository() -> NewsRepository:
+    """Return the process-wide RSS news repository."""
+    settings = get_settings()
+    return NewsRepository(create_database_engine(settings.database_url))

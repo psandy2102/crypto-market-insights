@@ -16,6 +16,7 @@ from crypto_market_insights.candle_storage import CandleRepository
 from crypto_market_insights.config import get_settings
 from crypto_market_insights.dependencies import (
     get_candle_repository,
+    get_news_repository,
     get_risk_decision_repository,
     get_universe_repository,
 )
@@ -24,6 +25,12 @@ from crypto_market_insights.kraken import (
     VenueMarketDataError,
     create_venue_market_data_provider,
 )
+from crypto_market_insights.news import (
+    NewsIngestionService,
+    RssNewsProvider,
+    parse_feed_configuration,
+)
+from crypto_market_insights.news_storage import NewsRepository
 from crypto_market_insights.risk_gates import (
     RiskGateEvaluator,
     RiskGateInput,
@@ -174,6 +181,56 @@ class RiskGateDecisionResponse(BaseModel):
     post_cost_reward_risk: Decimal | None
 
 
+class NewsArticleResponse(BaseModel):
+    id: UUID
+    canonical_url: str
+    title: str
+    publisher: str
+    language: str
+    published_at: datetime | None
+    retrieved_at: datetime
+    excerpt: str | None
+    title_fingerprint: str
+    source_count: int
+
+
+class NewsFeedHealthResponse(BaseModel):
+    feed_id: str
+    url: str
+    status: str
+    last_attempt_at: datetime
+    last_success_at: datetime | None
+    last_error: str | None
+    stale: bool
+    stale_after_seconds: int
+
+
+class NewsFeedRunResponse(BaseModel):
+    id: UUID
+    feed_id: str
+    url: str
+    status: str
+    started_at: datetime
+    completed_at: datetime | None
+    articles_received: int
+    articles_persisted: int
+    canonical_articles_added: int
+    duplicates_collapsed: int
+    error_code: str | None
+    error_message: str | None
+
+
+class NewsHealthResponse(BaseModel):
+    feeds: list[NewsFeedHealthResponse]
+    recent_runs: list[NewsFeedRunResponse]
+
+
+class NewsPollRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    feeds: list[dict[str, str]] = Field(default_factory=list)
+
+
 @app.get("/health")
 def get_health() -> dict[str, str]:
     """Return API readiness status."""
@@ -310,6 +367,67 @@ def get_latest_risk_decision(
     if result is None:
         raise HTTPException(status_code=404, detail="No risk decision is available.")
     return result
+
+
+@app.post("/api/v1/news/rss/poll")
+def poll_news_feeds(
+    request: NewsPollRequest,
+    repository: Annotated[NewsRepository, Depends(get_news_repository)],
+) -> dict[str, Any]:
+    """Poll configured RSS feeds conservatively and persist canonical articles."""
+    explicit_feeds: list[tuple[str, str]] = []
+    for item in request.feeds:
+        feed_id = item.get("feed_id", "").strip()
+        url = item.get("url", "").strip()
+        if not feed_id or not url:
+            raise HTTPException(
+                status_code=422,
+                detail="Each feed requires non-empty feed_id and url fields.",
+            )
+        explicit_feeds.append((feed_id, url))
+
+    if explicit_feeds:
+        feeds = explicit_feeds
+    else:
+        settings = get_settings()
+        try:
+            feeds = parse_feed_configuration(settings.rss_feeds)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    provider = RssNewsProvider()
+    try:
+        settings = get_settings()
+        runs = NewsIngestionService(repository, provider).poll(
+            feeds,
+            allowed_excerpt_chars=settings.news_excerpt_chars,
+        )
+        return {
+            "runs": [run.model_dump(mode="json") for run in runs],
+            "strategy_version": "rss-ingestion-v1",
+        }
+    finally:
+        provider.close()
+
+
+@app.get("/api/v1/news/articles", response_model=list[NewsArticleResponse])
+def get_news_articles(
+    repository: Annotated[NewsRepository, Depends(get_news_repository)],
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Return canonical persisted articles with provenance counts."""
+    return repository.get_articles(limit=limit)
+
+
+@app.get("/api/v1/news/health", response_model=NewsHealthResponse)
+def get_news_health(
+    repository: Annotated[NewsRepository, Depends(get_news_repository)],
+) -> dict[str, Any]:
+    """Return feed freshness, provider health, and recent polling runs."""
+    settings = get_settings()
+    return repository.get_health(
+        stale_after_seconds=settings.rss_stale_after_minutes * 60,
+    )
 
 
 def _to_utc(value: datetime) -> datetime:

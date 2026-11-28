@@ -273,6 +273,20 @@ component scores, and strategy versions. The latest stored snapshot is readable 
 `/api/v1/universe/latest` (optionally filtered by `?venue=kraken`). Membership changes are
 effective-dated; refreshes must be persisted in increasing timestamp order.
 
+### RSS news ingestion
+
+Configure feeds as semicolon-separated `feed-id=https://...` entries in `RSS_FEEDS`. Feed polls
+use bounded retries and persist article title, publisher, language, published/retrieved timestamps,
+canonical URL, permitted excerpt, and source-feed provenance. URLs are normalized by removing
+tracking parameters and fragments; repeated canonical URLs and matching publisher/title fingerprints
+resolve to one canonical article and retain each source alias. Excerpts are limited to
+`NEWS_EXCERPT_CHARS` characters rather than storing or republishing full articles.
+
+Use `POST /api/v1/news/rss/poll` to poll configured feeds, or send an explicit `feeds` array
+of `{ "feed_id": "...", "url": "..." }` objects. Inspect canonical articles at
+`GET /api/v1/news/articles` and provider/feed health at `GET /api/v1/news/health`. Failed runs,
+HTTP/network/XML validation failures, latest attempts, and stale feed state are visible.
+
 ### Risk gates and No Trade
 
 The `crypto_market_insights.risk_gates.RiskGateEvaluator` returns a first-class `TRADE` or
